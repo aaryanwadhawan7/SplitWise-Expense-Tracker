@@ -1,38 +1,22 @@
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import { TextField, Button, MenuItem, Box } from '@mui/material';
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { TextField } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-
-// Validation schema
-const schema = yup.object().shape({
-  amount: yup.number().positive('Amount must be positive').required('Amount is required'),
-  description: yup.string().min(3, 'Too short').required('Description is required'),
-  category: yup.string().required('Category is required'),
-  date: yup.date().required('Date is required'),
-});
-
-const categories = ['Food', 'Transport', 'Shopping', 'Entertainment', 'Bills'];
 
 export default function ExpenseFormHook({ onSubmit, defaultValues }) {
   const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     defaultValues,
-    resolver: yupResolver(schema)
   });
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box
-        component="form"
-        onSubmit={handleSubmit(onSubmit)}
-        sx={{ maxWidth: 400, mx: 'auto', mt: 4 }}
-        noValidate
-      >
+      <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ maxWidth: 400, margin: 'auto' }}>
         <Controller
           name="amount"
           control={control}
+          rules={{ required: 'Amount is required', min: { value: 0.01, message: 'Positive amount required' }}}
           render={({ field }) => (
             <TextField
               {...field}
@@ -50,6 +34,7 @@ export default function ExpenseFormHook({ onSubmit, defaultValues }) {
         <Controller
           name="description"
           control={control}
+          rules={{ required: 'Description is required' }}
           render={({ field }) => (
             <TextField
               {...field}
@@ -66,6 +51,7 @@ export default function ExpenseFormHook({ onSubmit, defaultValues }) {
         <Controller
           name="category"
           control={control}
+          rules={{ required: 'Category is required' }}
           render={({ field }) => (
             <TextField
               {...field}
@@ -76,10 +62,14 @@ export default function ExpenseFormHook({ onSubmit, defaultValues }) {
               error={!!errors.category}
               helperText={errors.category?.message}
               disabled={isSubmitting}
+              SelectProps={{ native: true }}
             >
-              {categories.map(cat => (
-                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-              ))}
+              <option value="">Select Category</option>
+              <option value="Food">Food</option>
+              <option value="Transport">Transport</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Bills">Bills</option>
             </TextField>
           )}
         />
@@ -87,35 +77,50 @@ export default function ExpenseFormHook({ onSubmit, defaultValues }) {
         <Controller
           name="date"
           control={control}
+          rules={{ required: 'Date is required' }}
           render={({ field }) => (
             <DatePicker
+              {...field}
               label="Date"
-              value={field.value}
+              value={field.value || null}
               onChange={field.onChange}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  fullWidth
-                  margin="normal"
-                  error={!!errors.date}
-                  helperText={errors.date?.message}
-                  disabled={isSubmitting}
-                />
-              )}
+              // Disable the new accessible DOM structure (avoid the error)
+              enableAccessibleFieldDOMStructure={false}
+              slots={{ textField: TextField }}
+              slotProps={{
+                textField: {
+                  fullWidth: true,
+                  margin: 'normal',
+                  error: !!errors.date,
+                  helperText: errors.date?.message,
+                  disabled: isSubmitting,
+                  inputProps: {
+                    'aria-label': 'date',
+                  },
+                },
+              }}
             />
           )}
         />
 
-        <Button
+        <button
           type="submit"
-          variant="contained"
-          fullWidth
-          sx={{ mt: 3 }}
           disabled={isSubmitting}
+          style={{
+            marginTop: 20,
+            padding: 12,
+            width: '100%',
+            backgroundColor: '#3b82f6',
+            color: '#fff',
+            fontWeight: 'bold',
+            border: 'none',
+            borderRadius: 6,
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+          }}
         >
           {isSubmitting ? 'Saving...' : 'Save Expense'}
-        </Button>
-      </Box>
+        </button>
+      </form>
     </LocalizationProvider>
   );
 }
