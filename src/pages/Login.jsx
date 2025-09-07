@@ -1,54 +1,72 @@
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase/config';
+import { auth, db } from '../firebase/config';
 import { useNavigate } from 'react-router-dom';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function Login() {
+  // Email and password form states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // Whether form is signup (true) or login (false)
   const [isSignUp, setIsSignUp] = useState(false);
+
+  // Loading and error states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setError('');
+
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        // Create Firebase user with email/pwd
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+
+        // Create Firestore user document with role = "user"
+        await setDoc(doc(db, "users", userCred.user.uid), {
+          email,
+          role: "user",           // Default role assigned on signup
+          createdAt: new Date()
+        });
       } else {
+        // Sign in existing user
         await signInWithEmailAndPassword(auth, email, password);
       }
+
+      // Redirect to dashboard after success
       navigate('/dashboard');
-    } catch (error) {
-      setError(error.message);
+
+    } catch (err) {
+      setError(err.message);  // Show error messages
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded shadow">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          {isSignUp ? 'Create your account' : 'Sign in to your account'}
+    <div style={{ minHeight: "100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#f3f4f6" }}>
+      <div style={{ background:"white", padding:32, width:320, borderRadius:8, boxShadow:"0 2px 8px #ccc" }}>
+        <h2 style={{textAlign:"center", marginBottom:24}}>
+          {isSignUp ? 'Create account' : 'Sign in'}
         </h2>
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+
+        {error && <div style={{color:"red", marginBottom:16}}>{error}</div>}
+
+        <form onSubmit={handleSubmit}>
           <input
             type="email"
-            placeholder="Email address"
+            placeholder="Email"
             required
             disabled={loading}
             value={email}
-            onChange={e => setEmail(e.target.value)}
-            className="w-full p-3 border rounded"
+            onChange={e=>setEmail(e.target.value)}
+            style={{ width:"100%", marginBottom:12, padding:8, borderRadius:4, border:"1px solid #ccc" }}
           />
           <input
             type="password"
@@ -56,27 +74,24 @@ export default function Login() {
             required
             disabled={loading}
             value={password}
-            onChange={e => setPassword(e.target.value)}
-            className="w-full p-3 border rounded"
+            onChange={e=>setPassword(e.target.value)}
+            style={{ width:"100%", marginBottom:12, padding:8, borderRadius:4, border:"1px solid #ccc" }}
           />
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50"
+            style={{ width:"100%", padding:10, background:"#4f46e5", color:"#fff", borderRadius:4, border:"none", fontSize:16 }}
           >
-            {loading ? (isSignUp ? 'Creating Account...' : 'Signing In...') : (isSignUp ? 'Sign Up' : 'Sign In')}
+            {loading ? (isSignUp ? "Creating Account..." : "Signing In...") : (isSignUp ? "Sign Up" : "Sign In")}
           </button>
         </form>
-        <p className="text-center text-sm mt-4">
-          {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
-          <button
-            onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
-            className="text-indigo-600 hover:underline"
-            type="button"
-          >
-            {isSignUp ? 'Sign In' : 'Sign Up'}
+
+        <div style={{ marginTop:16, textAlign:"center" }}>
+          <button type="button" onClick={() => {setIsSignUp(!isSignUp); setError('')}} style={{ background:"none", border:"none", color:"#4f46e5", cursor:"pointer", fontSize:14, textDecoration:"underline" }}>
+            {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
           </button>
-        </p>
+        </div>
       </div>
     </div>
   );
